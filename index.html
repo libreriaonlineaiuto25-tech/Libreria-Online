@@ -126,6 +126,7 @@
       </div>
     </header>
 
+    <!-- Aggiungi libri -->
     <section class="card panel" aria-labelledby="add-section">
       <h2 id="add-section" style="margin:0 0 12px 0; font-size:18px;">Aggiungi libri</h2>
       <div class="grid grid-4">
@@ -152,6 +153,7 @@
       </div>
     </section>
 
+    <!-- Toolbar -->
     <section class="card toolbar" style="margin-top:18px;">
       <div class="search" role="search">
         <label for="searchInput" style="margin-bottom:6px;">Cerca per titolo</label>
@@ -165,10 +167,10 @@
       </div>
     </section>
 
+    <!-- Tabella -->
     <section class="card panel" style="margin-top:18px;">
       <div class="table-wrap">
-        <table aria-describedby="table-caption">
-          <caption id="table-caption" style="caption-side: top; text-align:left; padding:8px 0; color:var(--muted);">Lista libri in libreria</caption>
+        <table>
           <thead>
             <tr>
               <th style="width:28%">Titolo</th>
@@ -188,6 +190,7 @@
     </footer>
   </div>
 
+  <!-- SCRIPT ORIGINALE + Firebase -->
   <script>
     const LS_KEY = 'libreria_data_v1';
     let libreria = [];
@@ -206,26 +209,22 @@
       let disp=0, nope=0;
       libreria.filter(b => !q || toLower(b.titolo).includes(q)).forEach((b, idx)=>{
         const tr=document.createElement('tr');
-        tr.innerHTML=\`
-          <td>\${escapeHTML(b.titolo)}</td>
-          <td>\${escapeHTML(b.autore)}</td>
-          <td>\${escapeHTML(b.anno)}</td>
-          <td>\${b.copie}</td>
+        tr.innerHTML=`
+          <td>${b.titolo}</td>
+          <td>${b.autore}</td>
+          <td>${b.anno}</td>
+          <td>${b.copie}</td>
           <td>
             <div class="actions">
-              <button class="btn good" data-act="borrow" data-idx="\${idx}">Prendi / Rimuovi uno</button>
-              <button class="btn warning" data-act="return" data-idx="\${idx}">Restituisci / Aggiungi</button>
-              <button class="btn danger" data-act="delete" data-idx="\${idx}">Elimina</button>
+              <button class="btn good" data-act="borrow" data-idx="${idx}">Prendi</button>
+              <button class="btn warning" data-act="return" data-idx="${idx}">Restituisci</button>
+              <button class="btn danger" data-act="delete" data-idx="${idx}">Elimina</button>
             </div>
-          </td>\`;
+          </td>`;
         tbody.appendChild(tr);
         if(b.copie>0) disp++; else nope++;
       });
       $('#countDisp').textContent=disp; $('#countNope').textContent=nope;
-    }
-
-    function escapeHTML(s){
-      return (s+"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
     function addBook(){
@@ -238,10 +237,10 @@
       saveToLocal(); saveToCloud();
       render(); clearForm();
     }
-    function clearForm(){ ['#titolo','#autore','#anno','#copie'].forEach(s=>$(s).value=''); $('#titolo').focus(); }
-    function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; else alert('Mi dispiace, non ci sono copie disponibili 😢'); saveToLocal(); saveToCloud(); render(); }
+    function clearForm(){ ['#titolo','#autore','#anno','#copie'].forEach(s=>$(s).value=''); }
+    function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; saveToLocal(); saveToCloud(); render(); }
     function returnBook(i){ libreria[i].copie++; saveToLocal(); saveToCloud(); render(); }
-    function deleteBook(i){ if(!confirm('Sei sicuro di voler eliminare questo libro?')) return; libreria.splice(i,1); saveToLocal(); saveToCloud(); render(); }
+    function deleteBook(i){ libreria.splice(i,1); saveToLocal(); saveToCloud(); render(); }
 
     $('#addBtn').addEventListener('click', addBook);
     $('#clearForm').addEventListener('click', clearForm);
@@ -254,47 +253,6 @@
     });
     $('#searchInput').addEventListener('input', render);
 
-    document.getElementById('saveLocal').addEventListener('click', async ()=>{
-      // keep existing: export JSON or TXT
-      const mode = confirm('OK = Salva JSON\nAnnulla = Salva TXT compatibile con C++');
-      if(mode) {
-        const blob = new Blob([JSON.stringify(libreria,null,2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href=url; a.download='libreria.json'; document.body.appendChild(a); a.click();
-        requestAnimationFrame(()=>{ URL.revokeObjectURL(url); a.remove(); });
-      } else {
-        const lines = libreria.map(b => \`\${b.titolo}\n\${b.autore}\n\${b.anno}\n\${b.copie}\`);
-        const blob = new Blob([lines.join('\n')], {type: 'text/plain'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href=url; a.download='libreria.txt'; document.body.appendChild(a); a.click();
-        requestAnimationFrame(()=>{ URL.revokeObjectURL(url); a.remove(); });
-      }
-    });
-
-    document.getElementById('loadLocal').addEventListener('click', ()=> document.getElementById('fileInput').click());
-    document.getElementById('fileInput').addEventListener('change', async (e)=>{
-      const file = e.target.files?.[0]; if(!file) return;
-      const text = await file.text();
-      if(file.name.endsWith('.json')){
-        try{
-          const data = JSON.parse(text);
-          if(Array.isArray(data)) libreria = data.filter(b => b && typeof b.titolo==='string');
-        } catch(e){ alert('JSON non valido'); }
-      } else {
-        const lines = text.split(/\r?\n/);
-        const out = [];
-        for(let i=0;i+3<lines.length;i+=4){
-          const titolo = lines[i]?.trim();
-          const autore = lines[i+1]?.trim();
-          const anno = lines[i+2]?.trim();
-          const copie = parseInt(lines[i+3]||'0',10);
-          if(titolo) out.push({titolo, autore, anno, copie});
-        }
-        libreria = out;
-      }
-      saveToLocal(); render();
-    });
-
     loadFromLocal(); render();
   </script>
 
@@ -304,15 +262,16 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // SOSTITUISCI con i dati del tuo progetto
     const firebaseConfig = {
-      apiKey: "API_KEY_TUA",
-      authDomain: "TUO-PROGETTO.firebaseapp.com",
-      projectId: "TUO-PROGETTO",
-      storageBucket: "TUO-PROGETTO.appspot.com",
-      messagingSenderId: "XXXXXXX",
-      appId: "APP_ID_TUA"
+      apiKey: "AIzaSyDxxxxxx",
+      authDomain: "libreria-online.firebaseapp.com",
+      projectId: "libreria-online",
+      storageBucket: "libreria-online.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef12345"
     };
+
+
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
