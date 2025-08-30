@@ -274,82 +274,95 @@
     $('#searchInput').addEventListener('input', render);
   </script>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
-      authDomain: "libreriaonline34.firebaseapp.com",
-      projectId: "libreriaonline34",
-      storageBucket: "libreriaonline34.firebasestorage.app",
-      messagingSenderId: "862046619476",
-      appId: "1:862046619476:web:0e0b764769ef2588226ac1",
-      measurementId: "G-SNV4ZHHFY5"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
+    authDomain: "libreriaonline34.firebaseapp.com",
+    projectId: "libreriaonline34",
+    storageBucket: "libreriaonline34.firebasestorage.app",
+    messagingSenderId: "862046619476",
+    appId: "1:862046619476:web:0e0b764769ef2588226ac1",
+    measurementId: "G-SNV4ZHHFY5"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    onAuthStateChanged(auth, u=>{
-      if(u){
-        user = u;
-        $('#loginBtn').textContent='Disconnetti';
-        loadFromCloud();
-      } else {
-        user = null;
-        $('#loginBtn').textContent='Accedi';
-      }
-    });
-
-    async function login(){
-      if(user){
-        await signOut(auth);
-        user=null;
-        $('#loginBtn').textContent='Accedi';
-        showMessage('Disconnesso!');
-      } else {
-        try{
-          const provider = new GoogleAuthProvider();
-          const result = await signInWithPopup(auth, provider);
-          user = result.user;
-          $('#loginBtn').textContent='Disconnetti';
-          showMessage('Login effettuato!');
-          await loadFromCloud();
-        } catch(e){
-          showMessage('Login fallito!');
-          console.error(e);
-        }
-      }
+  // Resta in ascolto sullo stato utente
+  onAuthStateChanged(auth, u=>{
+    if(u){
+      user = u;
+      $('#loginBtn').textContent='Disconnetti';
+      loadFromCloud();
+    } else {
+      user = null;
+      $('#loginBtn').textContent='Accedi';
     }
+  });
 
-    async function saveToCloud(){
-      if(!user){ showMessage('Devi prima fare login!'); return; }
+  // Recupera risultato login dopo redirect
+  getRedirectResult(auth).then((result) => {
+    if (result?.user) {
+      user = result.user;
+      $('#loginBtn').textContent='Disconnetti';
+      showMessage('Login effettuato!');
+      loadFromCloud();
+    }
+  }).catch((error) => {
+    if (error) {
+      console.error(error);
+      showMessage('Errore login!');
+    }
+  });
+
+  async function login(){
+    if(user){
+      await signOut(auth);
+      user=null;
+      $('#loginBtn').textContent='Accedi';
+      showMessage('Disconnesso!');
+    } else {
       try{
-        await setDoc(doc(db,"librerie",user.uid),{data:libreria});
-        showMessage('Libreria salvata online!');
-      } catch(e){ showMessage('Errore salvataggio!'); console.error(e); }
+        const provider = new GoogleAuthProvider();
+        // Avvia login con redirect
+        await signInWithRedirect(auth, provider);
+      } catch(e){
+        showMessage('Login fallito!');
+        console.error(e);
+      }
     }
+  }
 
-    async function loadFromCloud(){
-      if(!user){ showMessage('Devi prima fare login!'); return; }
-      try{
-        const snap = await getDoc(doc(db,"librerie",user.uid));
-        if(snap.exists() && snap.data().data){
-          libreria = snap.data().data;
-        } else {
-          libreria = [];
-        }
-        render();
-        showMessage('Libreria caricata!');
-      } catch(e){ showMessage('Errore caricamento!'); console.error(e); }
-    }
+  async function saveToCloud(){
+    if(!user){ showMessage('Devi prima fare login!'); return; }
+    try{
+      await setDoc(doc(db,"librerie",user.uid),{data:libreria});
+      showMessage('Libreria salvata online!');
+    } catch(e){ showMessage('Errore salvataggio!'); console.error(e); }
+  }
 
-    window.login=login;
-    window.saveToCloud=saveToCloud;
-    window.loadFromCloud=loadFromCloud;
-  </script>
+  async function loadFromCloud(){
+    if(!user){ showMessage('Devi prima fare login!'); return; }
+    try{
+      const snap = await getDoc(doc(db,"librerie",user.uid));
+      if(snap.exists() && snap.data().data){
+        libreria = snap.data().data;
+      } else {
+        libreria = [];
+      }
+      render();
+      showMessage('Libreria caricata!');
+    } catch(e){ showMessage('Errore caricamento!'); console.error(e); }
+  }
+
+  window.login=login;
+  window.saveToCloud=saveToCloud;
+  window.loadFromCloud=loadFromCloud;
+</script>
 </body>
 </html>
