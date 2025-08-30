@@ -68,7 +68,7 @@
       padding: 18px; border-radius: var(--radius);
     }
     label{ display:block; font-weight:600; font-size: 13px; margin-bottom: 8px; color: var(--muted); }
-    input[type="text"], input[type="number"], input[type="file"]{
+    input[type="text"], input[type="number"]{
       width:100%; background:#0d1023; color:var(--text); border:1px solid rgba(255,255,255,.08);
       border-radius: 12px; padding:12px 14px; outline:none;
     }
@@ -117,12 +117,9 @@
         </div>
       </div>
       <div class="actions">
-        <button class="btn good" id="saveLocal">Salva su dispositivo</button>
-        <button class="btn secondary" id="loadLocal">Carica file</button>
         <button class="btn secondary" onclick="login()">Accedi</button>
         <button class="btn good" onclick="saveToCloud()">Salva online</button>
         <button class="btn secondary" onclick="loadFromCloud()">Carica online</button>
-        <input type="file" id="fileInput" accept=".json,.txt" hidden />
       </div>
     </header>
 
@@ -186,28 +183,22 @@
     </section>
 
     <footer>
-      Tip: premi <span class="kbd">/</span> per cercare • Dati salvati in <strong>LocalStorage</strong> o <strong>online</strong>.
+      Tip: premi <span class="kbd">/</span> per cercare • Dati salvati <strong>online</strong>.
     </footer>
   </div>
 
-  <!-- SCRIPT ORIGINALE + Firebase -->
   <script>
-    const LS_KEY = 'libreria_data_v1';
-    let libreria = [];
-
     const $ = sel => document.querySelector(sel);
     const toLower = s => (s || '').toString().toLowerCase();
     const clampInt = (v, min, max) => Math.min(max, Math.max(min, parseInt(v || 0, 10)));
-
-    function saveToLocal(){ localStorage.setItem(LS_KEY, JSON.stringify(libreria)); }
-    function loadFromLocal(){ const raw = localStorage.getItem(LS_KEY); if(raw) try { libreria = JSON.parse(raw)||[]; } catch{} }
+    let libreria=[];
 
     function render(){
-      const tbody = $('#tbody');
-      const q = toLower($('#searchInput').value);
-      tbody.innerHTML = '';
+      const tbody=$('#tbody');
+      const q=toLower($('#searchInput').value);
+      tbody.innerHTML='';
       let disp=0, nope=0;
-      libreria.filter(b => !q || toLower(b.titolo).includes(q)).forEach((b, idx)=>{
+      libreria.filter(b=>!q||toLower(b.titolo).includes(q)).forEach((b,idx)=>{
         const tr=document.createElement('tr');
         tr.innerHTML=`
           <td>${b.titolo}</td>
@@ -224,7 +215,8 @@
         tbody.appendChild(tr);
         if(b.copie>0) disp++; else nope++;
       });
-      $('#countDisp').textContent=disp; $('#countNope').textContent=nope;
+      $('#countDisp').textContent=disp;
+      $('#countNope').textContent=nope;
     }
 
     function addBook(){
@@ -234,13 +226,13 @@
       const copie=clampInt($('#copie').value,0,1e6);
       if(!titolo||!autore){ alert('Titolo e Autore obbligatori'); return; }
       libreria.push({titolo,autore,anno,copie});
-      saveToLocal(); saveToCloud();
+      saveToCloud();
       render(); clearForm();
     }
     function clearForm(){ ['#titolo','#autore','#anno','#copie'].forEach(s=>$(s).value=''); }
-    function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; saveToLocal(); saveToCloud(); render(); }
-    function returnBook(i){ libreria[i].copie++; saveToLocal(); saveToCloud(); render(); }
-    function deleteBook(i){ libreria.splice(i,1); saveToLocal(); saveToCloud(); render(); }
+    function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; saveToCloud(); render(); }
+    function returnBook(i){ libreria[i].copie++; saveToCloud(); render(); }
+    function deleteBook(i){ libreria.splice(i,1); saveToCloud(); render(); }
 
     $('#addBtn').addEventListener('click', addBook);
     $('#clearForm').addEventListener('click', clearForm);
@@ -252,59 +244,48 @@
       if(btn.dataset.act==='delete') deleteBook(i);
     });
     $('#searchInput').addEventListener('input', render);
-
-    loadFromLocal(); render();
   </script>
 
   <!-- Firebase -->
   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
-    authDomain: "libreriaonline34.firebaseapp.com",
-    projectId: "libreriaonline34",
-    storageBucket: "libreriaonline34.firebasestorage.app",
-    messagingSenderId: "862046619476",
-    appId: "1:862046619476:web:0e0b764769ef2588226ac1",
-    measurementId: "G-SNV4ZHHFY5"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
+      authDomain: "libreriaonline34.firebaseapp.com",
+      projectId: "libreriaonline34",
+      storageBucket: "libreriaonline34.firebasestorage.app",
+      messagingSenderId: "862046619476",
+      appId: "1:862046619476:web:0e0b764769ef2588226ac1",
+      measurementId: "G-SNV4ZHHFY5"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  let user = null;
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    let user=null;
 
-  async function login() {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      user = result.user;
+    async function login(){
+      const provider=new GoogleAuthProvider();
+      const result=await signInWithPopup(auth,provider);
+      user=result.user;
       await loadFromCloud();
-    } catch (err) {
-      console.error("Errore login:", err);
     }
-  }
-
-  async function saveToCloud() {
-    if (!user) return;
-    await setDoc(doc(db, "librerie", user.uid), { data: libreria });
-  }
-
-  async function loadFromCloud() {
-    if (!user) return;
-    const snap = await getDoc(doc(db, "librerie", user.uid));
-    if (snap.exists()) {
-      libreria = snap.data().data || [];
-      render();
+    async function saveToCloud(){
+      if(!user) return;
+      await setDoc(doc(db,"librerie",user.uid),{data:libreria});
     }
-  }
+    async function loadFromCloud(){
+      if(!user) return;
+      const snap=await getDoc(doc(db,"librerie",user.uid));
+      if(snap.exists()){ libreria=snap.data().data||[]; render(); }
+    }
 
-  window.login = login;
-  window.saveToCloud = saveToCloud;
-  window.loadFromCloud = loadFromCloud;
-</script>
+    window.login=login;
+    window.saveToCloud=saveToCloud;
+    window.loadFromCloud=loadFromCloud;
+  </script>
 </body>
 </html>
