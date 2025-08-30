@@ -133,7 +133,7 @@
         </div>
       </div>
       <div class="actions">
-        <button class="btn secondary" id="loginBtn" onclick="login()">Accedi</button>
+        <button class="btn secondary" id="loginBtn">Accedi</button>
         <button class="btn good" onclick="saveToCloud()">Salva online</button>
         <button class="btn secondary" onclick="loadFromCloud()">Carica online</button>
       </div>
@@ -274,127 +274,98 @@
     $('#searchInput').addEventListener('input', render);
   </script>
 
-<script type="module">
-  // Debug helper - incollalo subito all'inizio del tuo module script
-console.log("DEBUG: window.location.href =", window.location.href);
-try {
-  const qs = new URL(window.location.href);
-  console.log("DEBUG: searchParams:", [...qs.searchParams.entries()]);
-  // anche hash
-  if (window.location.hash) {
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    console.log("DEBUG: hash params:", [...hash.entries()]);
-  }
-} catch(e){ console.warn("DEBUG parse url error", e) }
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// poi, subito dopo l'inizializzazione di `auth`
-getRedirectResult(auth)
-  .then(result => {
-    console.log("DEBUG getRedirectResult:", result);
-    if (result?.user) {
-      user = result.user;
-      $('#loginBtn').textContent='Disconnetti';
-      showMessage('Login effettuato!');
-      loadFromCloud();
-    } else {
-      console.log("DEBUG: nessun risultato redirect (ok se non sei appena tornato dal provider)");
-    }
-  })
-  .catch(err => {
-    console.error("DEBUG getRedirectResult error:", err);
-    showMessage('Errore login: ' + (err?.message || err?.code || 'unknown'));
-  });
-  
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
+      authDomain: "libreriaonline34.firebaseapp.com",
+      projectId: "libreriaonline34",
+      storageBucket: "libreriaonline34.firebasestorage.app",
+      messagingSenderId: "862046619476",
+      appId: "1:862046619476:web:0e0b764769ef2588226ac1",
+      measurementId: "G-SNV4ZHHFY5"
+    };
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
-    authDomain: "libreriaonline34.firebaseapp.com",
-    projectId: "libreriaonline34",
-    storageBucket: "libreriaonline34.firebasestorage.app",
-    messagingSenderId: "862046619476",
-    appId: "1:862046619476:web:0e0b764769ef2588226ac1",
-    measurementId: "G-SNV4ZHHFY5"
-  };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+    let user = null;
 
-  // Resta in ascolto sullo stato utente
-  onAuthStateChanged(auth, u=>{
-    if(u){
-      user = u;
-      $('#loginBtn').textContent='Disconnetti';
-      loadFromCloud();
-    } else {
-      user = null;
-      $('#loginBtn').textContent='Accedi';
-    }
-  });
-
-  // Recupera risultato login dopo redirect
-  getRedirectResult(auth).then((result) => {
-    if (result?.user) {
-      user = result.user;
-      $('#loginBtn').textContent='Disconnetti';
-      showMessage('Login effettuato!');
-      loadFromCloud();
-    }
-  }).catch((error) => {
-    if (error) {
-      console.error(error);
-      showMessage('Errore login!');
-    }
-  });
-
-  async function login() {
-  if(user){
-    await signOut(auth);
-    user=null;
-    $('#loginBtn').textContent='Accedi';
-    showMessage('Disconnesso!');
-  } else {
-    try{
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-    } catch(e){
-      showMessage('Login fallito!');
-      console.error(e);
-    }
-  }
-}
-
-// ✅ così `onclick="login()"` nell’HTML funziona
-window.login = login;
-
-  async function saveToCloud(){
-    if(!user){ showMessage('Devi prima fare login!'); return; }
-    try{
-      await setDoc(doc(db,"librerie",user.uid),{data:libreria});
-      showMessage('Libreria salvata online!');
-    } catch(e){ showMessage('Errore salvataggio!'); console.error(e); }
-  }
-
-  async function loadFromCloud(){
-    if(!user){ showMessage('Devi prima fare login!'); return; }
-    try{
-      const snap = await getDoc(doc(db,"librerie",user.uid));
-      if(snap.exists() && snap.data().data){
-        libreria = snap.data().data;
+    onAuthStateChanged(auth, u=>{
+      if(u){
+        user = u;
+        $('#loginBtn').textContent='Disconnetti';
+        loadFromCloud();
       } else {
-        libreria = [];
+        user = null;
+        $('#loginBtn').textContent='Accedi';
       }
-      render();
-      showMessage('Libreria caricata!');
-    } catch(e){ showMessage('Errore caricamento!'); console.error(e); }
-  }
+    });
 
-  window.login=login;
-  window.saveToCloud=saveToCloud;
-  window.loadFromCloud=loadFromCloud;
-</script>
+    async function login() {
+      if(user){
+        await signOut(auth);
+        user=null;
+        $('#loginBtn').textContent='Accedi';
+        showMessage('Disconnesso!');
+      } else {
+        try{
+          const provider = new GoogleAuthProvider();
+          await signInWithRedirect(auth, provider);
+        } catch(e){
+          showMessage('Login fallito!');
+          console.error(e);
+        }
+      }
+    }
+
+    // Associa il bottone login alla funzione
+    document.getElementById('loginBtn').addEventListener('click', login);
+
+    async function saveToCloud(){
+      if(!user){ showMessage('Devi prima fare login!'); return; }
+      try{
+        await setDoc(doc(db,"librerie",user.uid),{data:libreria});
+        showMessage('Libreria salvata online!');
+      } catch(e){ showMessage('Errore salvataggio!'); console.error(e); }
+    }
+
+    async function loadFromCloud(){
+      if(!user){ showMessage('Devi prima fare login!'); return; }
+      try{
+        const snap = await getDoc(doc(db,"librerie",user.uid));
+        if(snap.exists() && snap.data().data){
+          libreria = snap.data().data;
+        } else {
+          libreria = [];
+        }
+        render();
+        showMessage('Libreria caricata!');
+      } catch(e){ showMessage('Errore caricamento!'); console.error(e); }
+    }
+
+    // Recupera risultato login dopo redirect
+    getRedirectResult(auth).then(result => {
+      if(result?.user){
+        user = result.user;
+        $('#loginBtn').textContent='Disconnetti';
+        showMessage('Login effettuato!');
+        loadFromCloud();
+      }
+    }).catch(err => {
+      if(err){
+        console.error(err);
+        showMessage('Errore login!');
+      }
+    });
+
+    window.saveToCloud = saveToCloud;
+    window.loadFromCloud = loadFromCloud;
+
+  </script>
 </body>
 </html>
