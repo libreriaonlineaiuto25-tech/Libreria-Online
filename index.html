@@ -257,6 +257,7 @@
         try{ await saveToCloud(); } catch(e){ showMessage('Errore salvataggio cloud!'); console.error(e); }
       }
     }
+
     function clearForm(){ ['#titolo','#autore','#anno','#copie'].forEach(s=>$(s).value=''); }
     async function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; render(); if(user){ try{await saveToCloud();}catch{} } }
     async function returnBook(i){ libreria[i].copie++; render(); if(user){ try{await saveToCloud();}catch{} } }
@@ -283,7 +284,7 @@
       apiKey: "AIzaSyBfdkMZE9LMkwoeRisqTZpJrl278KpTq-U",
       authDomain: "libreriaonline34.firebaseapp.com",
       projectId: "libreriaonline34",
-      storageBucket: "libreriaonline34.firebasestorage.app",
+      storageBucket: "libreriaon1line34.firebaseapp.com",
       messagingSenderId: "862046619476",
       appId: "1:862046619476:web:0e0b764769ef2588226ac1",
       measurementId: "G-SNV4ZHHFY5"
@@ -292,8 +293,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
-    let user = null;
 
     onAuthStateChanged(auth, u=>{
       if(u){
@@ -323,7 +322,7 @@
       }
     }
 
-    // Associa il bottone login alla funzione
+    // Listener direttamente sul bottone
     document.getElementById('loginBtn').addEventListener('click', login);
 
     async function saveToCloud(){
@@ -348,7 +347,6 @@
       } catch(e){ showMessage('Errore caricamento!'); console.error(e); }
     }
 
-    // Recupera risultato login dopo redirect
     getRedirectResult(auth).then(result => {
       if(result?.user){
         user = result.user;
