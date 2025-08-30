@@ -207,12 +207,12 @@
     const $ = sel => document.querySelector(sel);
     const toLower = s => (s || '').toString().toLowerCase();
     const clampInt = (v, min, max) => Math.min(max, Math.max(min, parseInt(v || 0, 10)));
-    let libreria=[];
-    let user=null;
+    let libreria = [];
+    let user = null;
 
     function showMessage(msg){
       const m = $('#message');
-      m.textContent=msg;
+      m.textContent = msg;
       m.style.display='block';
       setTimeout(()=>{ m.style.display='none'; }, 2500);
     }
@@ -243,38 +243,40 @@
       $('#countNope').textContent=nope;
     }
 
-    function addBook(){
+    async function addBook(){
       const titolo=$('#titolo').value.trim();
       const autore=$('#autore').value.trim();
       const anno=$('#anno').value.trim();
       const copie=clampInt($('#copie').value,0,1e6);
       if(!titolo||!autore){ alert('Titolo e Autore obbligatori'); return; }
       libreria.push({titolo,autore,anno,copie});
-      saveToCloud();
-      render(); clearForm();
+      render();
+      clearForm();
       showMessage('Libro aggiunto!');
+      if(user){
+        try{ await saveToCloud(); } catch(e){ showMessage('Errore salvataggio cloud!'); console.error(e); }
+      }
     }
     function clearForm(){ ['#titolo','#autore','#anno','#copie'].forEach(s=>$(s).value=''); }
-    function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; saveToCloud(); render(); }
-    function returnBook(i){ libreria[i].copie++; saveToCloud(); render(); }
-    function deleteBook(i){ libreria.splice(i,1); saveToCloud(); render(); }
+    async function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; render(); if(user){ try{await saveToCloud();}catch{} } }
+    async function returnBook(i){ libreria[i].copie++; render(); if(user){ try{await saveToCloud();}catch{} } }
+    async function deleteBook(i){ libreria.splice(i,1); render(); if(user){ try{await saveToCloud();}catch{} } }
 
     $('#addBtn').addEventListener('click', addBook);
     $('#clearForm').addEventListener('click', clearForm);
-    $('#tbody').addEventListener('click', e=>{
+    $('#tbody').addEventListener('click', async e=>{
       const btn=e.target.closest('button[data-act]'); if(!btn) return;
       const i=+btn.dataset.idx;
-      if(btn.dataset.act==='borrow') borrow(i);
-      if(btn.dataset.act==='return') returnBook(i);
-      if(btn.dataset.act==='delete') deleteBook(i);
+      if(btn.dataset.act==='borrow') await borrow(i);
+      if(btn.dataset.act==='return') await returnBook(i);
+      if(btn.dataset.act==='delete') await deleteBook(i);
     });
     $('#searchInput').addEventListener('input', render);
   </script>
 
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -291,6 +293,17 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    onAuthStateChanged(auth, u=>{
+      if(u){
+        user = u;
+        $('#loginBtn').textContent='Disconnetti';
+        loadFromCloud();
+      } else {
+        user = null;
+        $('#loginBtn').textContent='Accedi';
+      }
+    });
+
     async function login(){
       if(user){
         await signOut(auth);
@@ -298,29 +311,40 @@
         $('#loginBtn').textContent='Accedi';
         showMessage('Disconnesso!');
       } else {
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth,provider);
-        user = result.user;
-        $('#loginBtn').textContent='Disconnetti';
-        showMessage('Login effettuato!');
-        await loadFromCloud();
+        try{
+          const provider = new GoogleAuthProvider();
+          const result = await signInWithPopup(auth, provider);
+          user = result.user;
+          $('#loginBtn').textContent='Disconnetti';
+          showMessage('Login effettuato!');
+          await loadFromCloud();
+        } catch(e){
+          showMessage('Login fallito!');
+          console.error(e);
+        }
       }
     }
 
     async function saveToCloud(){
       if(!user){ showMessage('Devi prima fare login!'); return; }
-      await setDoc(doc(db,"librerie",user.uid),{data:libreria});
-      showMessage('Libreria salvata online!');
+      try{
+        await setDoc(doc(db,"librerie",user.uid),{data:libreria});
+        showMessage('Libreria salvata online!');
+      } catch(e){ showMessage('Errore salvataggio!'); console.error(e); }
     }
 
     async function loadFromCloud(){
       if(!user){ showMessage('Devi prima fare login!'); return; }
-      const snap = await getDoc(doc(db,"librerie",user.uid));
-      if(snap.exists()){
-        libreria = snap.data().data || [];
+      try{
+        const snap = await getDoc(doc(db,"librerie",user.uid));
+        if(snap.exists() && snap.data().data){
+          libreria = snap.data().data;
+        } else {
+          libreria = [];
+        }
         render();
         showMessage('Libreria caricata!');
-      }
+      } catch(e){ showMessage('Errore caricamento!'); console.error(e); }
     }
 
     window.login=login;
