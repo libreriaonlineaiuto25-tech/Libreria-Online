@@ -350,24 +350,25 @@ getRedirectResult(auth)
     }
   });
 
-  async function login(){
-    if(user){
-      await signOut(auth);
-      user=null;
-      $('#loginBtn').textContent='Accedi';
-      showMessage('Disconnesso!');
-    } else {
-      try{
-        const provider = new GoogleAuthProvider();
-        // Avvia login con redirect
-        await signInWithRedirect(auth, provider);
-      } catch(e){
-        showMessage('Login fallito!');
-        console.error(e);
-      }
+  async function login() {
+  if(user){
+    await signOut(auth);
+    user=null;
+    $('#loginBtn').textContent='Accedi';
+    showMessage('Disconnesso!');
+  } else {
+    try{
+      const provider = new GoogleAuthProvider();
+      await signInWithRedirect(auth, provider);
+    } catch(e){
+      showMessage('Login fallito!');
+      console.error(e);
     }
   }
-  window.login = login;
+}
+
+// ✅ così `onclick="login()"` nell’HTML funziona
+window.login = login;
 
   async function saveToCloud(){
     if(!user){ showMessage('Devi prima fare login!'); return; }
