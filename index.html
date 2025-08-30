@@ -367,6 +367,7 @@ getRedirectResult(auth)
       }
     }
   }
+  window.login = login;
 
   async function saveToCloud(){
     if(!user){ showMessage('Devi prima fare login!'); return; }
