@@ -105,9 +105,25 @@
 
     footer{ margin: 26px 0 60px; color: var(--muted); font-size: 12px; text-align:center; }
     .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background:#1a1f45; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,.1); color:#c5cdfa; }
+
+    /* Messaggi */
+    #message{
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-weight: 600;
+      display: none;
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
+  <div id="message"></div>
+
   <div class="container">
     <header>
       <div class="title">
@@ -117,7 +133,7 @@
         </div>
       </div>
       <div class="actions">
-        <button class="btn secondary" onclick="login()">Accedi</button>
+        <button class="btn secondary" id="loginBtn" onclick="login()">Accedi</button>
         <button class="btn good" onclick="saveToCloud()">Salva online</button>
         <button class="btn secondary" onclick="loadFromCloud()">Carica online</button>
       </div>
@@ -192,6 +208,14 @@
     const toLower = s => (s || '').toString().toLowerCase();
     const clampInt = (v, min, max) => Math.min(max, Math.max(min, parseInt(v || 0, 10)));
     let libreria=[];
+    let user=null;
+
+    function showMessage(msg){
+      const m = $('#message');
+      m.textContent=msg;
+      m.style.display='block';
+      setTimeout(()=>{ m.style.display='none'; }, 2500);
+    }
 
     function render(){
       const tbody=$('#tbody');
@@ -228,6 +252,7 @@
       libreria.push({titolo,autore,anno,copie});
       saveToCloud();
       render(); clearForm();
+      showMessage('Libro aggiunto!');
     }
     function clearForm(){ ['#titolo','#autore','#anno','#copie'].forEach(s=>$(s).value=''); }
     function borrow(i){ if(libreria[i]?.copie>0) libreria[i].copie--; saveToCloud(); render(); }
@@ -249,7 +274,7 @@
   <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -265,22 +290,37 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    let user=null;
 
     async function login(){
-      const provider=new GoogleAuthProvider();
-      const result=await signInWithPopup(auth,provider);
-      user=result.user;
-      await loadFromCloud();
+      if(user){
+        await signOut(auth);
+        user=null;
+        $('#loginBtn').textContent='Accedi';
+        showMessage('Disconnesso!');
+      } else {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth,provider);
+        user = result.user;
+        $('#loginBtn').textContent='Disconnetti';
+        showMessage('Login effettuato!');
+        await loadFromCloud();
+      }
     }
+
     async function saveToCloud(){
-      if(!user) return;
+      if(!user){ showMessage('Devi prima fare login!'); return; }
       await setDoc(doc(db,"librerie",user.uid),{data:libreria});
+      showMessage('Libreria salvata online!');
     }
+
     async function loadFromCloud(){
-      if(!user) return;
-      const snap=await getDoc(doc(db,"librerie",user.uid));
-      if(snap.exists()){ libreria=snap.data().data||[]; render(); }
+      if(!user){ showMessage('Devi prima fare login!'); return; }
+      const snap = await getDoc(doc(db,"librerie",user.uid));
+      if(snap.exists()){
+        libreria = snap.data().data || [];
+        render();
+        showMessage('Libreria caricata!');
+      }
     }
 
     window.login=login;
