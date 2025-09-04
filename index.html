@@ -299,15 +299,31 @@
   const db = getFirestore(app);
 
   // Cambia UI se loggato/non loggato
-  onAuthStateChanged(auth, u=>{
+  onAuthStateChanged(auth, async u => {
     if(u){
       user = u;
-      $('#loginBtn').textContent='Disconnetti';
+      $('#loginBtn').textContent = 'Disconnetti';
+      try {
+        const snap = await getDoc(doc(db,"librerie",user.uid));
+        if(snap.exists() && snap.data().data){
+          libreria = snap.data().data;
+        } else {
+          libreria = [];
+        }
+        render();
+        showMessage('Libreria caricata!');
+      } catch(e){
+        showMessage('Errore caricamento libreria!');
+        console.error(e);
+      }
     } else {
       user = null;
-      $('#loginBtn').textContent='Accedi';
+      $('#loginBtn').textContent = 'Accedi';
+      libreria = [];   // svuota libreria locale al logout
+      render();        // aggiorna tabella vuota
     }
   });
+
 
   // Login/Logout con popup
   async function login() {
