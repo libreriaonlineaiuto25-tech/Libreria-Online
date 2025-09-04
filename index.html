@@ -218,31 +218,35 @@
     }
 
     function render(){
-      const tbody=$('#tbody');
-      const q=toLower($('#searchInput').value);
-      tbody.innerHTML='';
-      let disp=0, nope=0;
-      libreria.filter(b=>!q||toLower(b.titolo).includes(q)).forEach((b,idx)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`
-          <td>${b.titolo}</td>
-          <td>${b.autore}</td>
-          <td>${b.anno}</td>
-          <td>${b.copie}</td>
-          <td>
-            <div class="actions">
-              <button class="btn good" data-act="borrow" data-idx="${idx}">Prendi</button>
-              <button class="btn warning" data-act="return" data-idx="${idx}">Restituisci</button>
-              <button class="btn danger" data-act="delete" data-idx="${idx}">Elimina</button>
-            </div>
-          </td>`;
-        tbody.appendChild(tr);
-        if(b.copie>0) disp++; else nope++;
-      });
-      $('#countDisp').textContent=disp;
-      $('#countNope').textContent=nope;
+      const tbody = $('#tbody');
+      const q = toLower($('#searchInput').value);
+      tbody.innerHTML = '';
+      let disp = 0, nope = 0;
+    
+      libreria
+        .map((b, i) => ({ ...b, realIdx: i }))       // aggiungi indice reale
+        .filter(b => !q || toLower(b.titolo).includes(q))
+        .forEach(b => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${b.titolo}</td>
+            <td>${b.autore}</td>
+            <td>${b.anno}</td>
+            <td>${b.copie}</td>
+            <td>
+              <div class="actions">
+                <button class="btn good" data-act="borrow" data-idx="${b.realIdx}">Prendi</button>
+                <button class="btn warning" data-act="return" data-idx="${b.realIdx}">Restituisci</button>
+                <button class="btn danger" data-act="delete" data-idx="${b.realIdx}">Elimina</button>
+              </div>
+            </td>`;
+          tbody.appendChild(tr);
+          if(b.copie > 0) disp++; else nope++;
+        });
+    
+      $('#countDisp').textContent = disp;
+      $('#countNope').textContent = nope;
     }
-
     async function addBook(){
       const titolo=$('#titolo').value.trim();
       const autore=$('#autore').value.trim();
