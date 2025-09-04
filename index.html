@@ -314,14 +314,17 @@
     if(user){
       await signOut(auth);
       user = null;
-      libreria = [];  // <-- reset dei libri locali
-      render();       // <-- aggiorna la tabella vuota
+      libreria = [];  // svuota libreria locale
+      render();       // aggiorna la tabella vuota
       $('#loginBtn').textContent = 'Accedi';
       showMessage('Disconnesso!');
     } else {
       try{
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider); // <-- popup login
+        provider.setCustomParameters({
+          prompt: 'select_account' // <-- forza scelta account
+        });
+        await signInWithPopup(auth, provider);
         showMessage('Login effettuato!');
       } catch(e){
         showMessage('Login fallito!');
@@ -329,7 +332,7 @@
       }
     }
   }
-
+    
   document.getElementById('loginBtn').addEventListener('click', login);
 
   async function saveToCloud(){
