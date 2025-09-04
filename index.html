@@ -313,13 +313,15 @@
   async function login() {
     if(user){
       await signOut(auth);
-      user=null;
-      $('#loginBtn').textContent='Accedi';
+      user = null;
+      libreria = [];  // <-- reset dei libri locali
+      render();       // <-- aggiorna la tabella vuota
+      $('#loginBtn').textContent = 'Accedi';
       showMessage('Disconnesso!');
     } else {
       try{
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider); // <-- qui popup
+        await signInWithPopup(auth, provider); // <-- popup login
         showMessage('Login effettuato!');
       } catch(e){
         showMessage('Login fallito!');
