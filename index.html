@@ -318,6 +318,7 @@
       render();       // aggiorna la tabella vuota
       $('#loginBtn').textContent = 'Accedi';
       showMessage('Disconnesso!');
+      loadFromCloud();
     } else {
       try{
         const provider = new GoogleAuthProvider();
